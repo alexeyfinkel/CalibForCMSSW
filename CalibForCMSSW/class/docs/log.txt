@@ -1,0 +1,48 @@
+Questions:
+	Need to either agree on a fixed naming convention, or have a list of variable names passed as an argument to constructor.
+	Are electrons in NTuples pt-ordered?
+	Which branches should correspond to which of my data members?	(Various options, e.g. etaEle vs. etaSCEle.)
+	Will there be a bitmap for NT selection in the NTuple? Is there currently one for the rest of EE? If so, what is it called?
+	How to handle the existing corrections?
+		Possibility: use the fully-corrected energy to compute the energy ratio, corrected by raio of original and calibrated energy.
+	Are energy fractions available in the NTuple?
+	
+To Do List:
+	-Figure out handling of input TChain (this sort of needs consensus on names)
+	-Implement corresponding member tree (remember that it needs to be reset after every iteration)
+	-Do loop over events, getting NT electrons, correcting them, filling ratio hists
+	
+Notes:
+	22-7-14: Filled in most of the needed functions, added some missing members. Now question is mostly of getting the input tree/chain set up. Need to understand what will happen with variable names and how the rec hit information will be made available in NTuples (see Questions).
+	
+	23-7-14: Looking at ZNtupleDumper, seems that electron rec hit ix, iy stored in separate vectors, so no need for vector of pairs. There is no vector of energy fractions. Rather than making one, probably easiest to directly correct and sum rec hit energies.
+	Started working on reading in TChain. Confused! Which eta, phi do I want? How to access the specific electrons? Are they Pt sorted? If yes, I will need to make an eta-ordering. 
+	
+	25-7-14: Working on loop over events. However, event initialization is still to be worked out, as is the situation with electron selection. 
+	How do I account for existing energy corrections? (See Questions)
+	Working out details of calibration procedure. Since Shervin's NTuples don't seem to have energy fractions, calculating my own. Going to have them computed for every event, accounting for corrections up to that point.
+	Got the basic layout of the calibration and ratioHists filling in. But it will almost ertainly need adjustment.
+	
+	05-08-14: Met with Shervin, and all principal questions were answered to some extent:
+	-Names will be fixed, but name of the energy that I compare to expected should be a variable that is passed in.-
+	-Electrons are Pt-ordered, so I was right to eta-sort them.
+	-Shervin will put E_exp in the Ntuple, so I won't have to do anything with eta, phi, etc, greately reducing the number of needed branches. I should deactivate them all on start, and only bring back the ones I need.
+	-Shervin will also prepare a list of ovents passing selection. I just need to loop over it, rather than the full ntuple.
+	-Correcting whatever final energy by ratio of calibratedRaw/Raw should work fine.
+	-Energy fractions will eventually be included in the NTuples.
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
