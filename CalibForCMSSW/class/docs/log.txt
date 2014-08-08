@@ -1,11 +1,5 @@
 Questions:
-	Need to either agree on a fixed naming convention, or have a list of variable names passed as an argument to constructor.
-	Are electrons in NTuples pt-ordered?
-	Which branches should correspond to which of my data members?	(Various options, e.g. etaEle vs. etaSCEle.)
-	Will there be a bitmap for NT selection in the NTuple? Is there currently one for the rest of EE? If so, what is it called?
-	How to handle the existing corrections?
-		Possibility: use the fully-corrected energy to compute the energy ratio, corrected by raio of original and calibrated energy.
-	Are energy fractions available in the NTuple?
+	Will there be a single tree/chain? Or should I still take care about the "selected" vs. "extaCalibTree"?
 	
 To Do List:
 	-Figure out handling of input TChain (this sort of needs consensus on names)
@@ -31,6 +25,8 @@ Notes:
 	-Correcting whatever final energy by ratio of calibratedRaw/Raw should work fine.
 	-Energy fractions will eventually be included in the NTuples.
 	
+	06-08-14: Moved my code into a CMSSW release.
+	08-08-14: Added TEventList and energy to use name to constructor. Removed kinematic variables that are no longer needed. Made a tentative InitTree(), less the branches that will be introduced later. Removed the zVars struct and updated the initVars to "clearVars" instead.
 	
 	
 	

@@ -13,6 +13,7 @@
 #include <TTree.h>
 #include <TH1D.h>
 #include <TH2D.h>
+#include "TEntryList.h"
 
 
 
@@ -26,12 +27,9 @@ class EECalibration
 		EECalibration(){};
 		
 		//Normal constructor
-		EECalibration(TChain* inputChain, std::string outputDir);
-			/*	this needs to take in the following:
-			path to output directory, output file name
-			?possibly names of the variables in the provided ntuples?
-			?possibly optional numbner of iterations?
-			Apparently, I need to use a TChain for this.	*/
+		EECalibration(TChain* inputChain, TEntryList eventList, std::string EName, std::string outputDir);
+			//***I need to use a TChain for this, with a list of events passing our requirements (will be provided by Shervin)	***//
+			//or is the entry list already part of the TChain?!//
 			
 		//destructor
 		virtual ~EECalibration();
@@ -40,29 +38,20 @@ class EECalibration
 		//list of variables
 		std::vector<std::string> branchNames = {"PtEle", "etaSCEle", "phiSCEle", "PtEle", "etaSCEle", "phiSCEle"}; 
 		//may also need for NT: EIso, HIso, H/EM, sigmaIeIe--depdnds if selection is already made
-		struct zVars
-		{
+		//struct zVars //Seems to be no advantage to this struct...
+		//{
 			//to eta-sort electrons:
 			int tag;
 			int proble;
 			//arrays for getting values out of NTuple
-			float pts[2];//float because that's what Shevin's NTuples use
-			float etas[2];
-			float phis[2];
 			std::vector<int> hix[2]; 
 			std::vector<int> hiy[2];
-			std::vector<float> hitEnergies[2];
-			std::vector<float> rawEnergies[2];
-			//calculated values:
-			double expectedPt;
-			double observedPt;
-			double energyRatio;
-			double correctedE;
+			std::vector<float> observedEs[2];
+			std::vector<float> hitFractions[2];
+			//calculated values
 			double correction;
-			std::vector<float> hitFractions;
-			
-			//may also need shower-shape vars
-		} Z;
+			double expectedE;
+		//} Z;
 		//safety checks:
 		bool histsReady = false;
 		bool mapsReady = false;
@@ -97,7 +86,7 @@ class EECalibration
 		void resetRatHists(); //reset ratio hists for next iteration
 		
 		//once per event, or many times per iteration
-		void initVars(); //initializes variables to safe values at each new event... probably redundant!
+		void clearVars(); //initializes variables to safe values at each new event... probably redundant!
 		void get electrons(int evt);//retrieve electrons, eta-ordered, passing selection
 		void xtlFit(TH1D* xtlHist);//fits agiven histogram with a gaussian
 		

@@ -1,7 +1,7 @@
 //Here, I try to implement some of the basic funcitons for the calibration class; still in brainstorming/trial stage.
 
 
-
+////constructor////
 EECalibration::EECalibration(TChain inputChain, std::string outputDir)
 {
 	initHists();
@@ -13,7 +13,9 @@ EECalibration::EECalibration(TChain inputChain, std::string outputDir)
 	pruneHists();
 	printConsts();
 }
+//====================================================================
 
+////Once per Job////
 EECalibration::calibrate()
 {
 	for(int iteration=1;iteration<=nIterations;iteration++)
@@ -105,10 +107,27 @@ void EECalibration::printConsts()
 		}
 	}
 }
+//==============================================================================================================================
 
+////Once Per Iteration////
 void EECalibration::initTree()
 {
+	//turn off all branches, and reactivate only the useful ones:
+	inputChain->SetBranchStatus("*",0);
+	inputChain->SetBranchStatus("XRecHitSCEle",1);//activate hix
+	inputChain->SetBranchStatus("YRecHitSCEle",1);//activate hiy
+	inputChain->SetBranchStatus("",1);//activate fractions
+	inputChain->SetBranchStatus("",1);//activate expected energy
+	inputChain->SetBranchStatus(EName.c_str(),1);//activate observed energy of your choosing
 	
+	//set branch addresses:
+	inputChain->SetBranchAddress("", &expectedE);//***expectedE branch forthcoming...
+	inputChain->SetBranchAddress(EName.c_str(), observedEs);
+	inputChain->SetBranchAddress("XRecHitSCEle", hix);
+	inputChain->SetBranchAddress("YRecHitSCEle", hiy);
+	inputChain->SetBranchAddress("", hitFractions); //***fractions branch forthcoming...
+	
+	inputChain->GetEvent(entryList->GetEntry(0));
 }
 
 void EECalibration::resetRatHists()
@@ -126,36 +145,31 @@ void EECalibration::resetRatHists()
 
 void EECalibration::fillRatHists()
 {
-	for(int evt=0;evt<inputChain->GetEntries();evt++)
+	for(int evt=0;evt<entryList->GetN();evt++)
 	{
-		initVars();//***This needs to be updated... once the final vars content is decided***//
-		if(!getElectrons(i)) continue;//try to get electrons in correct range, passing selection
-		expectedPt = Mz*Mz/( pts[tag]*cosh(etas[tag]-etas[probe])-cos(phis[tag]-phis[probe]) );
+		clearVars(i);//***This needs to be updated... once the final vars content is decided***//
+		if(!getElectrons(entryList->GetEntry(evt)))) continue;//try to get electrons in correct range, passing selection
 		if(iteration==1) correction = 1;
 		else
 		{
-			for(unsigned int hit=0; hit<hitEnergies[probe].size_of();hit++)
+			for(unsigned int hit=0; hit<hitfractions[probe].size_of();hit++)
 			{
 				if(etas[probe]<0)
-				{
-					correctedE += hitEnergies[probe].at(hit)*constsN->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
-					hitFractions.push_back( hitEnergies[probe].at(hit)*constsN->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) )/rawEnergies[probe].at(hit) );
-				}
-				else 
-				{	
-					correctedE += hitEnergies[probe].at(hit)*constsP->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
-					hitFractions.push_back( hitEnergies[probe].at(hit)*constsP->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) )/rawEnergies[probe].at(hit) );
-				
+					correction += hitFractions[probe].at(hit)*constsN->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
+					
+				else correction += hitFractions[probe].at(hit)*constsP->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
 			}
-			correction = correctedE/rawE;
 		}
-		energyRatio = expectedPt/(pts[probe]*correction);
+		energyRatio = expectedE/(observedEs[probe]*correction);
 		
 		for(unsigned int hit=0; hit<hitEnergies[probe].size_of();hit++)
 		{
 			if(etas[probe]<0)
-				ratioMapN[std::male_pair( hix[probe].at(hit),hiy[probe].at(hit) )]->Fill( energyRatio,hitFractionsat(hit) );
-			else ratioMapP[std::male_pair( hix[probe].at(hit),hiy[probe].at(hit) )]->Fill( energyRatio,hitFractionsat(hit) );
+				ratioMapN[std::male_pair( hix[probe].at(hit),hiy[probe].at(hit) )]->Fill( energyRatio,hitFractions[probe].at(hit)
+							*constsN->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
+				
+			else ratioMapP[std::male_pair( hix[probe].at(hit),hiy[probe].at(hit) )]->Fill( energyRatio,hitFractions[probe].at(hit)
+							*constsP->GetBinContent( hix[probe].at(hit),hiy[probe].at(hit) );
 		}		
 	}	
 }
@@ -182,23 +196,20 @@ void EECalibration::updateConsts()
 	}
 }
 
-void EECalibration::initVars()//***Will need to be updated once needed variables are settled down!...***//
+void EECalibration::clearVars()//***Will need to be updated once needed variables are settled down!...***//
 {
-	Z.e1_pt = -1000;
-	Z.e1_eta = -100;
-	Z.e1_phi = -100;
-	Z.e2_pt = -1000;
-	Z.e2_eta = -100;
-	Z.e2_phi = -100;
-	Z.hits.clear();
-	Z.eFractions.clear();
-	hix = 0; //0 should be the safest value, as it should correspond to underflow bins in cal. const. hists
-	hiy = 0;
+	expectedE = 0;
+	observedEs.clear();
+	hitFractions.clear();
+	hix.clear(); //0 should be the safest value, as it should correspond to underflow bins in cal. const. hists
+	hiy.clear();
 }
+//===============================================================================================================================
 
-bool EECalibration::getElectrons(int evt)
+////Once Per Event, or Many Times Per Iteration
+bool EECalibration::getElectrons(int i)
 {
-	inputChain->GetEvent(evt);
+	inputChain->GetEvent(i);
 	//sort electrons by location
 	if(etas[0]<1.48 && etas[1]>1.57)
 	{
@@ -211,11 +222,8 @@ bool EECalibration::getElectrons(int evt)
 		probe = 0;
 	}
 	else return false;
-	//assuming range is fine:
-	//***Need to either check appropriate selection bit or manually check selection criteria
-	//This is different for Tracked and NT electrons!***//
-	//assuming electrons pass appropriate selection:
 	
+	//assuming range is fine:	
 	return true;		
 }
 
